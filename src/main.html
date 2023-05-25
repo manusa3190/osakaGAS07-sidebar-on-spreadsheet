@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style type="text/tailwindcss">
+      th,td {@apply whitespace-nowrap border border-white px-1}
+      button {@apply mx-2 my-1 bg-blue-500 rounded-lg px-2 py-1 active:opacity-60}
+    </style>
+  </head>
+  <body class="p-3 bg-slate-900 text-sm text-white">
+      <div id="page" hidden><?= page ?></div>
+      <div id="vue-app"></div>
+
+      <!-- vue3 -->
+      <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+      <script>
+        const {ref,reactive,toRefs, computed, watch, watchEffect, onMounted, defineComponent} = Vue
+
+        const modalComponent = defineComponent({
+          async setup(){
+
+          },
+          template:``
+        })
+
+        const sidebarComponent = defineComponent({
+          setup(){
+            const columns = ref([])
+
+            const data = ref('')
+            const previewItems = computed(()=>{
+              if(!data.value)return []
+
+              const rows = data.value.split('\n').map(row=>row.split('\t'))
+              columns.value = rows.shift()
+              const items = rows.map(record=>{
+                return columns.value.reduce((item,colName,idx)=>{
+                  const val = record[idx]
+                  return Object.assign(item,{[colName]: /^\d+$/.test(val)? Number(val):val})
+                },{})
+              })
+              return items
+            })
+
+            const submit =()=>{
+              google.script.run
+                .withSuccessHandler(res=>{
+
+                })
+                .setData(JSON.stringify(previewItems.value))
+            }
+
+            return {columns, data, previewItems,submit}
+          },
+          template:`
+          <textarea v-model="data" class="p-2 my-3 w-full h-48 border border-white bg-transparent rounded-lg "></textarea>
+
+          <table>
+            <h2>プレビュー</h2>
+            <tr>
+              <th v-for="colName of columns">{{ colName }}</th>
+            </tr>
+            <tr v-for="item of previewItems.slice(0,5)">
+              <td v-for="colName of columns">{{ item[colName] }}</td>
+            </tr>
+          </table>
+
+          <button @click="data=''">クリア</button>
+          <button @click="submit()">書き込み</button>            
+          `
+        })
+
+        Vue.createApp({
+          components:{sidebarComponent,modalComponent},
+          setup(){
+            const page = ref('')
+            onMounted(()=>{
+              page.value = document.getElementById('page').innerText
+            })
+            return {page}
+          },
+          template: `
+          <sidebarComponent v-if="page==='sidebar'"/>
+          
+          <div v-if="page==='modal'">
+              <Suspense >
+                <modalComponent />
+              </Suspense>          
+          </div>
+          `
+        }).mount('#vue-app')
+      </script>
+  </body>
+</html>
